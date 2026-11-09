@@ -6,6 +6,7 @@
 #include "SJF.h"
 #include "Priority.h"
 #include "RoundRobin.h"
+#include "SRTF.h"
 
 #include <iostream>
 #include <cmath>
@@ -407,6 +408,125 @@ void testRoundRobinArrivalAtQuantumBoundary() {
 }
 
 
+void testBasicSRTF() {
+
+    std::vector<Process> processes = {
+        Process(1, 0, 8),
+        Process(2, 1, 4),
+        Process(3, 2, 2)
+    };
+
+    SRTFScheduler scheduler;
+    auto timeline = scheduler.schedule(processes);
+
+    checkEqual(static_cast<int>(timeline.size()), 5,
+               "SRTF creates five execution segments");
+
+    checkEqual(timeline[0].pid, 1, "SRTF starts with P1");
+    checkEqual(timeline[1].pid, 2, "P2 preempts P1");
+    checkEqual(timeline[2].pid, 3, "P3 preempts P2");
+    checkEqual(timeline[3].pid, 2, "P2 resumes");
+    checkEqual(timeline[4].pid, 1, "P1 resumes");
+
+    checkEqual(timeline[0].startTime, 0, "P1 starts at 0");
+    checkEqual(timeline[0].endTime, 1, "P1 preempted at 1");
+
+    checkEqual(timeline[2].startTime, 2, "P3 starts at 2");
+    checkEqual(timeline[2].endTime, 4, "P3 finishes at 4");
+
+    checkEqual(timeline[4].endTime, 14,
+               "SRTF completes at time 14");
+}
+
+void testSRTFIdleTime() {
+
+    std::vector<Process> processes = {
+        Process(1, 3, 2),
+        Process(2, 10, 3)
+    };
+
+    SRTFScheduler scheduler;
+    auto timeline = scheduler.schedule(processes);
+
+    checkEqual(static_cast<int>(timeline.size()), 4,
+               "SRTF handles two idle periods");
+
+    check(timeline[0].isIdle,
+          "SRTF handles initial idle time");
+
+    checkEqual(timeline[0].startTime, 0,
+               "Initial idle starts at 0");
+
+    checkEqual(timeline[0].endTime, 3,
+               "Initial idle ends at 3");
+
+    checkEqual(timeline[1].pid, 1,
+               "P1 executes after idle");
+
+    check(timeline[2].isIdle,
+          "SRTF handles idle time between processes");
+
+    checkEqual(timeline[2].startTime, 5,
+               "Second idle starts at 5");
+
+    checkEqual(timeline[2].endTime, 10,
+               "Second idle ends at 10");
+
+    checkEqual(timeline[3].pid, 2,
+               "P2 executes after second idle");
+}
+
+void testSRTFEqualRemainingTime() {
+
+    std::vector<Process> processes = {
+        Process(2, 0, 4),
+        Process(1, 0, 4)
+    };
+
+    SRTFScheduler scheduler;
+    auto timeline = scheduler.schedule(processes);
+
+    checkEqual(timeline[0].pid, 1,
+               "SRTF resolves equal remaining time using smaller PID");
+}
+
+
+void testSRTFMetrics() {
+
+    std::vector<Process> processes = {
+        Process(1, 0, 8),
+        Process(2, 1, 4),
+        Process(3, 2, 2)
+    };
+
+    SRTFScheduler scheduler;
+    auto timeline = scheduler.schedule(processes);
+
+    auto metrics =
+        MetricsCalculator::calculateProcessMetrics(
+            processes, timeline
+        );
+
+    checkEqual(metrics[0].completionTime, 14,
+               "SRTF P1 completion time");
+
+    checkEqual(metrics[0].waitingTime, 6,
+               "SRTF P1 waiting time");
+
+    checkEqual(metrics[1].completionTime, 7,
+               "SRTF P2 completion time");
+
+    checkEqual(metrics[1].waitingTime, 2,
+               "SRTF P2 waiting time");
+
+    checkEqual(metrics[2].completionTime, 4,
+               "SRTF P3 completion time");
+
+    checkEqual(metrics[2].waitingTime, 0,
+               "SRTF P3 waiting time");
+}
+
+
 int main() {
     std::cout << "\n===== CPU SCHEDULER STUDIO TESTS =====\n\n";
 
@@ -424,6 +544,10 @@ testBasicRoundRobin();
 testRoundRobinIdleTime();
 testRoundRobinInvalidQuantum();
 testRoundRobinArrivalAtQuantumBoundary();
+testBasicSRTF();
+testSRTFIdleTime();
+testSRTFEqualRemainingTime();
+testSRTFMetrics();
 
     std::cout << "\n===== TEST SUMMARY =====\n";
     std::cout << "Passed: " << passed << "\n";

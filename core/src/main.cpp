@@ -8,6 +8,7 @@
 #include "Priority.h"
 #include "SJF.h"
 #include "RoundRobin.h"
+#include "SRTF.h"
 
 int main() {
 
@@ -152,6 +153,23 @@ int main() {
                         std::cout << "Time Quantum: 2\n";
                         
                         for (const ExecutionSegment& segment : rrTimeline) {
+                            if (segment.isIdle) {
+                                std::cout << "| IDLE ";
+                            } else {
+                                std::cout << "| P" << segment.pid << " ";
+                            }
+                        }
+                        
+                        std::cout << "|\n";
+                        // Run SRTF scheduling
+                        SRTFScheduler srtfScheduler;
+                        
+                        std::vector<ExecutionSegment> srtfTimeline =
+                            srtfScheduler.schedule(manager.getAllProcesses());
+                        
+                        std::cout << "\n\n===== SRTF SCHEDULING =====\n";
+                        
+                        for (const ExecutionSegment& segment : srtfTimeline) {
                             if (segment.isIdle) {
                                 std::cout << "| IDLE ";
                             } else {
