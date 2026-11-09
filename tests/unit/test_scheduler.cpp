@@ -3,7 +3,7 @@
 #include "ProcessManager.h"
 #include "FCFS.h"
 #include "MetricsCalculator.h"
-
+#include "SJF.h"
 #include <iostream>
 #include <cmath>
 #include <stdexcept>
@@ -195,6 +195,54 @@ void testProcessManager() {
                "Duplicate process is not added");
 }
 
+
+void testBasicSJF() {
+    std::vector<Process> processes = {
+        Process(1, 0, 7),
+        Process(2, 2, 4),
+        Process(3, 4, 1),
+        Process(4, 5, 4)
+    };
+
+    SJFScheduler scheduler;
+    auto timeline = scheduler.schedule(processes);
+
+    checkEqual(static_cast<int>(timeline.size()), 4,
+               "SJF creates four execution segments");
+
+    checkEqual(timeline[0].pid, 1, "SJF starts with P1");
+    checkEqual(timeline[1].pid, 3, "SJF selects shortest available P3");
+    checkEqual(timeline[2].pid, 2, "SJF breaks tie using smaller PID");
+    checkEqual(timeline[3].pid, 4, "SJF executes remaining P4");
+
+    checkEqual(timeline[0].startTime, 0, "P1 starts at 0");
+    checkEqual(timeline[0].endTime, 7, "P1 ends at 7");
+    checkEqual(timeline[3].endTime, 16, "SJF finishes at 16");
+}
+
+void testSJFArrivalAndIdleTime() {
+    std::vector<Process> processes = {
+        Process(1, 3, 5),
+        Process(2, 10, 2)
+    };
+
+    SJFScheduler scheduler;
+    auto timeline = scheduler.schedule(processes);
+
+    checkEqual(static_cast<int>(timeline.size()), 4,
+               "SJF creates idle and execution segments");
+
+    check(timeline[0].isIdle, "SJF handles initial CPU idle time");
+    checkEqual(timeline[0].startTime, 0, "SJF idle starts at 0");
+    checkEqual(timeline[0].endTime, 3, "SJF idle ends at 3");
+
+    checkEqual(timeline[1].pid, 1, "P1 executes after arrival");
+    check(timeline[2].isIdle, "SJF handles idle time between processes");
+    checkEqual(timeline[2].startTime, 8, "Second idle starts at 8");
+    checkEqual(timeline[2].endTime, 10, "Second idle ends at 10");
+}
+
+
 int main() {
     std::cout << "\n===== CPU SCHEDULER STUDIO TESTS =====\n\n";
 
@@ -204,6 +252,8 @@ int main() {
     testProcessMetrics();
     testOverallMetrics();
     testProcessManager();
+    testBasicSJF();
+testSJFArrivalAndIdleTime();
 
     std::cout << "\n===== TEST SUMMARY =====\n";
     std::cout << "Passed: " << passed << "\n";
