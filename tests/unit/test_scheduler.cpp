@@ -7,6 +7,7 @@
 #include "Priority.h"
 #include "RoundRobin.h"
 #include "SRTF.h"
+#include "SimulationEngine.h"
 
 #include <iostream>
 #include <cmath>
@@ -526,6 +527,115 @@ void testSRTFMetrics() {
                "SRTF P3 waiting time");
 }
 
+void testSimulationEngine() {
+
+    std::vector<Process> processes = {
+        Process(1, 0, 3),
+        Process(2, 1, 2)
+    };
+
+    FCFSScheduler scheduler;
+    SimulationEngine engine;
+
+    SimulationResult result =
+        engine.run(scheduler, processes);
+
+    checkEqual(
+        static_cast<int>(result.timeline.size()),
+        2,
+        "Engine generates correct timeline"
+    );
+
+    checkEqual(
+        static_cast<int>(result.processMetrics.size()),
+        2,
+        "Engine calculates metrics for all processes"
+    );
+
+    checkEqual(
+        result.processMetrics[0].completionTime,
+        3,
+        "Engine calculates P1 completion time"
+    );
+
+    checkEqual(
+        result.processMetrics[1].completionTime,
+        5,
+        "Engine calculates P2 completion time"
+    );
+
+    checkEqual(
+        result.processMetrics[1].waitingTime,
+        2,
+        "Engine calculates P2 waiting time"
+    );
+
+    
+    checkNear(
+        result.overallMetrics.cpuUtilization,
+        100.0,
+        "Engine calculates CPU utilization"
+    );
+}
+
+void testSimulationStateTransitions() {
+
+    std::vector<Process> processes = {
+        Process(1, 0, 3),
+        Process(2, 1, 2)
+    };
+
+    FCFSScheduler scheduler;
+    SimulationEngine engine;
+
+    SimulationResult result =
+        engine.run(scheduler, processes);
+
+    checkEqual(
+        static_cast<int>(result.stateHistory.size()),
+        6,
+        "Engine records six process state events"
+    );
+
+    // P1: NEW -> READY
+    check(
+        result.stateHistory[0].fromState == ProcessState::NEW &&
+        result.stateHistory[0].toState == ProcessState::READY,
+        "P1 transitions from NEW to READY"
+    );
+
+    // P1: READY -> RUNNING
+    check(
+        result.stateHistory[1].fromState == ProcessState::READY &&
+        result.stateHistory[1].toState == ProcessState::RUNNING,
+        "P1 transitions from READY to RUNNING"
+    );
+
+    // P2 arrives at time 1.
+    check(
+        result.stateHistory[2].pid == 2 &&
+        result.stateHistory[2].toState == ProcessState::READY,
+        "P2 enters READY state at arrival"
+    );
+
+    // P1 completes at time 3.
+    check(
+        result.stateHistory[3].toState == ProcessState::TERMINATED,
+        "P1 transitions to TERMINATED"
+    );
+
+    // P2 starts at time 3.
+    check(
+        result.stateHistory[4].toState == ProcessState::RUNNING,
+        "P2 transitions to RUNNING"
+    );
+
+    // P2 completes at time 5.
+    check(
+        result.stateHistory[5].toState == ProcessState::TERMINATED,
+        "P2 transitions to TERMINATED"
+    );
+}
 
 int main() {
     std::cout << "\n===== CPU SCHEDULER STUDIO TESTS =====\n\n";
@@ -548,6 +658,8 @@ testBasicSRTF();
 testSRTFIdleTime();
 testSRTFEqualRemainingTime();
 testSRTFMetrics();
+testSimulationEngine();
+testSimulationStateTransitions();
 
     std::cout << "\n===== TEST SUMMARY =====\n";
     std::cout << "Passed: " << passed << "\n";
