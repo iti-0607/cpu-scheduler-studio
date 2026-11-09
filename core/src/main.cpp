@@ -5,6 +5,8 @@
 #include "Process.h"
 #include "ProcessManager.h"
 #include "FCFS.h"
+#include "Priority.h"
+#include "SJF.h"
 
 int main() {
 
@@ -102,5 +104,41 @@ int main() {
                         << overall.throughput
                         << " processes per time unit\n";
 
+
+                        // Run SJF scheduling
+                        SJFScheduler sjf;
+                        
+                        std::vector<ExecutionSegment> sjfTimeline =
+                            sjf.schedule(manager.getAllProcesses());
+                        
+                        std::cout << "\n\n===== SJF SCHEDULING =====\n";
+                        
+                        for (const ExecutionSegment& segment : sjfTimeline) {
+                            if (segment.isIdle) {
+                                std::cout << "| IDLE ";
+                            } else {
+                                std::cout << "| P" << segment.pid << " ";
+                            }
+                        }
+                        
+                        std::cout << "|\n";
+                        
+                        // Run Priority scheduling
+                        PriorityScheduler priorityScheduler;
+                        
+                        std::vector<ExecutionSegment> priorityTimeline =
+                            priorityScheduler.schedule(manager.getAllProcesses());
+                        
+                        std::cout << "\n\n===== PRIORITY SCHEDULING =====\n";
+                        
+                        for (const ExecutionSegment& segment : priorityTimeline) {
+                            if (segment.isIdle) {
+                                std::cout << "| IDLE ";
+                            } else {
+                                std::cout << "| P" << segment.pid << " ";
+                            }
+                        }
+                        
+                        std::cout << "|\n";
     return 0;
 }

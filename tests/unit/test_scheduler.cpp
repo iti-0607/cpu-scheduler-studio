@@ -4,6 +4,8 @@
 #include "FCFS.h"
 #include "MetricsCalculator.h"
 #include "SJF.h"
+#include "Priority.h"
+
 #include <iostream>
 #include <cmath>
 #include <stdexcept>
@@ -243,6 +245,68 @@ void testSJFArrivalAndIdleTime() {
 }
 
 
+void testBasicPriority() {
+    std::vector<Process> processes = {
+        Process(1, 0, 6, 2),
+        Process(2, 1, 3, 1),
+        Process(3, 2, 2, 3),
+        Process(4, 3, 1, 1)
+    };
+
+    PriorityScheduler scheduler;
+    auto timeline = scheduler.schedule(processes);
+
+    checkEqual(static_cast<int>(timeline.size()), 4,
+               "Priority creates four execution segments");
+
+    checkEqual(timeline[0].pid, 1,
+               "P1 starts because it is the only available process");
+
+    checkEqual(timeline[1].pid, 2,
+               "P2 wins priority tie using smaller PID");
+
+    checkEqual(timeline[2].pid, 4,
+               "P4 executes after P2");
+
+    checkEqual(timeline[3].pid, 3,
+               "P3 executes last");
+
+    checkEqual(timeline[0].endTime, 6,
+               "P1 finishes at 6");
+
+    checkEqual(timeline[3].endTime, 12,
+               "Priority scheduling finishes at 12");
+}
+
+void testPriorityIdleTime() {
+    std::vector<Process> processes = {
+        Process(1, 4, 3, 2),
+        Process(2, 10, 2, 1)
+    };
+
+    PriorityScheduler scheduler;
+    auto timeline = scheduler.schedule(processes);
+
+    checkEqual(static_cast<int>(timeline.size()), 4,
+               "Priority creates three segments with idle time");
+
+    check(timeline[0].isIdle,
+          "Priority handles initial CPU idle time");
+
+    checkEqual(timeline[0].startTime, 0,
+               "Priority idle starts at 0");
+
+    checkEqual(timeline[0].endTime, 4,
+               "Priority idle ends at 4");
+
+    checkEqual(timeline[1].pid, 1,
+               "P1 executes after arrival");
+
+    check(timeline[2].isIdle,
+          "Priority handles idle time between processes");
+}
+
+
 int main() {
     std::cout << "\n===== CPU SCHEDULER STUDIO TESTS =====\n\n";
 
@@ -254,6 +318,8 @@ int main() {
     testProcessManager();
     testBasicSJF();
 testSJFArrivalAndIdleTime();
+testBasicPriority();
+testPriorityIdleTime();
 
     std::cout << "\n===== TEST SUMMARY =====\n";
     std::cout << "Passed: " << passed << "\n";
