@@ -5,6 +5,7 @@
 #include "MetricsCalculator.h"
 #include "SJF.h"
 #include "Priority.h"
+#include "RoundRobin.h"
 
 #include <iostream>
 #include <cmath>
@@ -307,6 +308,105 @@ void testPriorityIdleTime() {
 }
 
 
+void testBasicRoundRobin() {
+    std::vector<Process> processes = {
+        Process(1, 0, 5),
+        Process(2, 1, 4),
+        Process(3, 2, 2)
+    };
+
+    RoundRobinScheduler scheduler(2);
+
+    auto timeline = scheduler.schedule(processes);
+
+    checkEqual(static_cast<int>(timeline.size()), 6,
+               "Round Robin creates six execution segments");
+
+    checkEqual(timeline[0].pid, 1, "RR first process is P1");
+    checkEqual(timeline[1].pid, 2, "RR second process is P2");
+    checkEqual(timeline[2].pid, 3, "RR third process is P3");
+    checkEqual(timeline[3].pid, 1, "RR fourth segment is P1");
+    checkEqual(timeline[4].pid, 2, "RR fifth segment is P2");
+    checkEqual(timeline[5].pid, 1, "RR sixth segment is P1");
+
+    checkEqual(timeline[0].startTime, 0, "RR starts at time 0");
+    checkEqual(timeline[0].endTime, 2, "First quantum ends at 2");
+
+    checkEqual(timeline[5].endTime, 11,
+               "RR completes all processes at 11");
+}
+
+
+
+void testRoundRobinIdleTime() {
+    std::vector<Process> processes = {
+        Process(1, 3, 3),
+        Process(2, 10, 2)
+    };
+
+    RoundRobinScheduler scheduler(2);
+    auto timeline = scheduler.schedule(processes);
+
+    checkEqual(static_cast<int>(timeline.size()), 5,
+               "RR creates five segments with idle time");
+
+    check(timeline[0].isIdle, "RR handles initial idle time");
+    checkEqual(timeline[0].startTime, 0, "Initial idle starts at 0");
+    checkEqual(timeline[0].endTime, 3, "Initial idle ends at 3");
+
+    checkEqual(timeline[1].pid, 1, "P1 executes first quantum");
+    checkEqual(timeline[1].startTime, 3, "P1 starts at 3");
+    checkEqual(timeline[1].endTime, 5, "P1 first quantum ends at 5");
+
+    checkEqual(timeline[2].pid, 1, "P1 executes remaining burst");
+    checkEqual(timeline[2].startTime, 5, "P1 resumes at 5");
+    checkEqual(timeline[2].endTime, 6, "P1 completes at 6");
+
+    check(timeline[3].isIdle, "RR handles idle time before P2");
+    checkEqual(timeline[3].startTime, 6, "Second idle starts at 6");
+    checkEqual(timeline[3].endTime, 10, "Second idle ends at 10");
+
+    checkEqual(timeline[4].pid, 2, "P2 executes after idle");
+}
+
+
+void testRoundRobinInvalidQuantum() {
+    bool exceptionThrown = false;
+
+    try {
+        RoundRobinScheduler scheduler(0);
+    } catch (const std::invalid_argument&) {
+        exceptionThrown = true;
+    }
+
+    check(exceptionThrown,
+          "RR rejects zero time quantum");
+}
+
+void testRoundRobinArrivalAtQuantumBoundary() {
+    std::vector<Process> processes = {
+        Process(1, 0, 4),
+        Process(2, 2, 2)
+    };
+
+    RoundRobinScheduler scheduler(2);
+
+    auto timeline = scheduler.schedule(processes);
+
+    checkEqual(timeline[0].pid, 1,
+               "Boundary test starts with P1");
+
+    checkEqual(timeline[1].pid, 2,
+               "New arrival at quantum boundary executes next");
+
+    checkEqual(timeline[2].pid, 1,
+               "Preempted P1 executes after P2");
+
+    checkEqual(timeline[0].endTime, 2,
+               "P1 first quantum ends at arrival time");
+}
+
+
 int main() {
     std::cout << "\n===== CPU SCHEDULER STUDIO TESTS =====\n\n";
 
@@ -320,6 +420,10 @@ int main() {
 testSJFArrivalAndIdleTime();
 testBasicPriority();
 testPriorityIdleTime();
+testBasicRoundRobin();
+testRoundRobinIdleTime();
+testRoundRobinInvalidQuantum();
+testRoundRobinArrivalAtQuantumBoundary();
 
     std::cout << "\n===== TEST SUMMARY =====\n";
     std::cout << "Passed: " << passed << "\n";

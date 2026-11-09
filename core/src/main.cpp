@@ -7,6 +7,7 @@
 #include "FCFS.h"
 #include "Priority.h"
 #include "SJF.h"
+#include "RoundRobin.h"
 
 int main() {
 
@@ -132,6 +133,25 @@ int main() {
                         std::cout << "\n\n===== PRIORITY SCHEDULING =====\n";
                         
                         for (const ExecutionSegment& segment : priorityTimeline) {
+                            if (segment.isIdle) {
+                                std::cout << "| IDLE ";
+                            } else {
+                                std::cout << "| P" << segment.pid << " ";
+                            }
+                        }
+                        
+                        std::cout << "|\n";
+
+                        // Run Round Robin scheduling with quantum = 2
+                        RoundRobinScheduler rrScheduler(2);
+                        
+                        std::vector<ExecutionSegment> rrTimeline =
+                            rrScheduler.schedule(manager.getAllProcesses());
+                        
+                        std::cout << "\n\n===== ROUND ROBIN SCHEDULING =====\n";
+                        std::cout << "Time Quantum: 2\n";
+                        
+                        for (const ExecutionSegment& segment : rrTimeline) {
                             if (segment.isIdle) {
                                 std::cout << "| IDLE ";
                             } else {
